@@ -510,7 +510,7 @@ public class EncodeDecodeTest extends AndroidTestCase {
                         inputBuf.clear();
                         inputBuf.put(frameData);
 
-                        encoder.queueInputBuffer(inputBufIndex, 0, frameData.length, ptsUsec, 0);
+                        encoder.queueInputBuffer(inputBufIndex, 0, frameData.length, ptsUsec, MediaCodec.BUFFER_FLAG_KEY_FRAME);
                         if (VERBOSE) Log.d(TAG, "submitted frame " + generateIndex + " to enc");
                     }
                     generateIndex++;

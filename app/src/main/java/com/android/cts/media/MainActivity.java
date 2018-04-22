@@ -14,6 +14,19 @@ public class MainActivity extends AppCompatActivity {
     // Example of a call to a native method
     TextView tv = (TextView) findViewById(R.id.sample_text);
     tv.setText(stringFromJNI());
+
+        new Thread() {
+            public void run() {
+//                AsynExtractDecodeEditEncodeMuxTest test = new AsynExtractDecodeEditEncodeMuxTest();
+                ATranscodeTest test = new ATranscodeTest();
+                test.setContext(MainActivity.this);
+                try {
+                    test.testExtractDecodeEditEncodeMuxAudioVideo();
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
+            }
+        }.start();
     }
 
     /**

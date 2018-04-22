@@ -24,18 +24,20 @@ import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
+import android.os.Bundle;
 import android.os.Environment;
-import android.test.AndroidTestCase;
+import android.support.test.runner.AndroidJUnit4;
 import android.util.Log;
 import android.view.Surface;
 
-import com.android.cts.media.R;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
-
+import static org.junit.Assert.*;
 /**
  * Test for the integration of MediaMuxer and MediaCodec's encoder.
  * <p>
@@ -50,10 +52,11 @@ import java.util.concurrent.atomic.AtomicReference;
  * MediaMuxer.
  */
 @TargetApi(18)
-public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
+@RunWith(AndroidJUnit4.class)
+public class ExtractDecodeEditEncodeMuxTest  extends  AExampleInstrumentedTest{
 
-    private static final String TAG = ExtractDecodeEditEncodeMuxTest.class.getSimpleName();
-    private static final boolean VERBOSE = false; // lots of logging
+    private static final String TAG = Utils.TAG;
+    private static final boolean VERBOSE = true; // lots of logging
 
     /**
      * How long to wait for the next buffer to become available.
@@ -67,9 +70,9 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
 
     // parameters for the video encoder
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
-    private static final int OUTPUT_VIDEO_BIT_RATE = 2000000; // 2Mbps
-    private static final int OUTPUT_VIDEO_FRAME_RATE = 15; // 15fps
-    private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 10; // 10 seconds between I-frames
+    private static final int OUTPUT_VIDEO_BIT_RATE = 10000000; // 2Mbps
+    private static final int OUTPUT_VIDEO_FRAME_RATE = 30; // 15fps
+    private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 1; // 10 seconds between I-frames
     private static final int OUTPUT_VIDEO_COLOR_FORMAT =
             MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface;
 
@@ -135,7 +138,7 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
         setCopyVideo();
         TestWrapper.runTest(this);
     }
-
+    @Test
     public void testExtractDecodeEditEncodeMux720p() throws Throwable {
         setSize(1280, 720);
         setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
@@ -231,29 +234,31 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
      * <p>Must be called after {@link #setSize(int, int)} and {@link #setSource(int)}.
      */
     private void setOutputFile() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(OUTPUT_FILENAME_DIR.getAbsolutePath());
-        sb.append("/cts-media-");
-        sb.append(getClass().getSimpleName());
-        assertTrue("should have called setSource() first", mSourceResId != -1);
-        sb.append('-');
-        sb.append(mSourceResId);
-        if (mCopyVideo) {
-            assertTrue("should have called setSize() first", mWidth != -1);
-            assertTrue("should have called setSize() first", mHeight != -1);
-            sb.append('-');
-            sb.append("video");
-            sb.append('-');
-            sb.append(mWidth);
-            sb.append('x');
-            sb.append(mHeight);
-        }
-        if (mCopyAudio) {
-            sb.append('-');
-            sb.append("audio");
-        }
-        sb.append(".mp4");
-        mOutputFile = sb.toString();
+//        StringBuilder sb = new StringBuilder();
+//        sb.append(OUTPUT_FILENAME_DIR.getAbsolutePath());
+//        sb.append("/cts-media-");
+//        sb.append(getClass().getSimpleName());
+//        assertTrue("should have called setSource() first", mSourceResId != -1);
+//        sb.append('-');
+//        sb.append(mSourceResId);
+//        if (mCopyVideo) {
+//            assertTrue("should have called setSize() first", mWidth != -1);
+//            assertTrue("should have called setSize() first", mHeight != -1);
+//            sb.append('-');
+//            sb.append("video");
+//            sb.append('-');
+//            sb.append(mWidth);
+//            sb.append('x');
+//            sb.append(mHeight);
+//        }
+//        if (mCopyAudio) {
+//            sb.append('-');
+//            sb.append("audio");
+//        }
+//
+//        sb.append(".mp4");
+//        mOutputFile = sb.toString();
+        mOutputFile=  generateProjectId()+".mp4";
     }
 
     /**
@@ -292,7 +297,7 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
         MediaMuxer muxer = null;
 
         InputSurface inputSurface = null;
-
+        long beginTime=System.currentTimeMillis();
         try {
             if (mCopyVideo) {
                 videoExtractor = createExtractor();
@@ -368,6 +373,8 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
             // other exception has already been thrown). This guarantees the first exception thrown
             // is reported as the cause of the error, everything is (attempted) to be released, and
             // all other exceptions appear in the logs.
+            long elapseTime=System.currentTimeMillis()-beginTime;
+            Log.i(TAG,"elapse time:"+elapseTime+"\t"+mOutputFile);
             try {
                 if (videoExtractor != null) {
                     videoExtractor.release();
@@ -472,13 +479,18 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
     /**
      * Creates an extractor that reads its frames from {@link #mSourceResId}.
      */
-    private MediaExtractor createExtractor() throws IOException {
-        MediaExtractor extractor;
-        AssetFileDescriptor srcFd = getContext().getResources().openRawResourceFd(mSourceResId);
-        extractor = new MediaExtractor();
-        extractor.setDataSource(srcFd.getFileDescriptor(), srcFd.getStartOffset(),
-                srcFd.getLength());
-        return extractor;
+    private MediaExtractor createExtractor()  {
+        try {
+            MediaExtractor extractor;
+            AssetFileDescriptor srcFd = getContext().getResources().openRawResourceFd(mSourceResId);
+            extractor = new MediaExtractor();
+            extractor.setDataSource(srcFd.getFileDescriptor(), srcFd.getStartOffset(),
+                    srcFd.getLength());
+            return extractor;
+        }catch (Exception e){
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -611,6 +623,7 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
             MediaMuxer muxer,
             InputSurface inputSurface,
             OutputSurface outputSurface) {
+
         ByteBuffer[] videoDecoderInputBuffers = null;
         ByteBuffer[] videoDecoderOutputBuffers = null;
         ByteBuffer[] videoEncoderOutputBuffers = null;
@@ -666,6 +679,8 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
         int audioExtractedFrameCount = 0;
         int audioDecodedFrameCount = 0;
         int audioEncodedFrameCount = 0;
+
+
 
         while ((mCopyVideo && !videoEncoderDone) || (mCopyAudio && !audioEncoderDone)) {
             if (VERBOSE) {
@@ -826,6 +841,8 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                     Log.d(TAG, "video decoder: returned buffer for time "
                             + videoDecoderOutputBufferInfo.presentationTimeUs);
                 }
+
+
                 boolean render = videoDecoderOutputBufferInfo.size != 0;
                 videoDecoder.releaseOutputBuffer(decoderOutputBufferIndex, render);
                 if (render) {
@@ -839,7 +856,11 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                     if (VERBOSE) Log.d(TAG, "input surface: swap buffers");
                     inputSurface.swapBuffers();
                     if (VERBOSE) Log.d(TAG, "video encoder: notified of new frame");
+
+
                 }
+
+
                 if ((videoDecoderOutputBufferInfo.flags
                         & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                     if (VERBOSE) Log.d(TAG, "video decoder: EOS");
@@ -850,7 +871,9 @@ public class ExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 // We extracted a pending frame, let's try something else next.
                 break;
             }
-
+            Bundle b = new Bundle();
+            b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+            videoEncoder.setParameters(b);
             // Poll output frames from the audio decoder.
             // Do not poll if we already have a pending buffer to feed to the encoder.
             while (mCopyAudio && !audioDecoderDone && pendingAudioDecoderOutputBufferIndex == -1

@@ -160,7 +160,7 @@ public class DecoderTest extends MediaPlayerTestBase {
         extractor.selectTrack(0);
 
         // start decoding
-        final long kTimeOutUs = 5000;
+        final long kTimeOutUs = 1000;
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
         boolean sawInputEOS = false;
         boolean sawOutputEOS = false;
