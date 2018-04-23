@@ -871,9 +871,9 @@ public class ExtractDecodeEditEncodeMuxTest  extends  AExampleInstrumentedTest{
                 // We extracted a pending frame, let's try something else next.
                 break;
             }
-            Bundle b = new Bundle();
-            b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
-            videoEncoder.setParameters(b);
+//            Bundle b = new Bundle();
+//            b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+//            videoEncoder.setParameters(b);
             // Poll output frames from the audio decoder.
             // Do not poll if we already have a pending buffer to feed to the encoder.
             while (mCopyAudio && !audioDecoderDone && pendingAudioDecoderOutputBufferIndex == -1
@@ -983,6 +983,8 @@ public class ExtractDecodeEditEncodeMuxTest  extends  AExampleInstrumentedTest{
             // Poll frames from the video encoder and send them to the muxer.
             while (mCopyVideo && !videoEncoderDone
                     && (encoderOutputVideoFormat == null || muxing)) {
+
+
                 int encoderOutputBufferIndex = videoEncoder.dequeueOutputBuffer(
                         videoEncoderOutputBufferInfo, TIMEOUT_USEC);
                 if (encoderOutputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {

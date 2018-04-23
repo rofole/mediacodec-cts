@@ -153,7 +153,8 @@ public class AExtractDecodeEditEncodeMuxTest extends AExampleInstrumentedTest {
     @Test
     public void testExtractDecodeEditEncodeMux720p() throws Throwable {
         setSize(1280, 720);
-        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
+//        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
+        setSource(R.raw.bbb_s4_1280x720_mp4_h264_mp31_8mbps_30fps_aac_he_mono_40kbps_44100hz);
         setCopyVideo();
         TestWrapper.runTest(this);
     }

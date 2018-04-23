@@ -52,7 +52,7 @@ public class AExampleInstrumentedTest {
                 continue;
             try {
                 if (projectDir.getName().matches(regx)) {
-                    int index = Integer.valueOf(projectDir.getName().substring(0, 2));
+                    int index = Integer.valueOf(projectDir.getName().substring(0, 3));
                     if (index > lastIndex) {
                         lastIndex = index;
                     }

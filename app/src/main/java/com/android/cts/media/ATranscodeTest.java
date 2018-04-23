@@ -66,11 +66,11 @@ public class ATranscodeTest extends AndroidTestCase {
 
     // parameters for the video encoder
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
-    private static final int OUTPUT_VIDEO_BIT_RATE = 2000000; // 2Mbps
+    private static final int OUTPUT_VIDEO_BIT_RATE = 4000000; // 2Mbps
     private static final int OUTPUT_VIDEO_FRAME_RATE = 25; // 15fps
     private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 0; // 10 seconds between I-frames
     private static final int OUTPUT_VIDEO_COLOR_FORMAT =
-            MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible;
+            MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar;
 
     // parameters for the audio encoder
     private static final String OUTPUT_AUDIO_MIME_TYPE = "audio/mp4a-latm"; // Advanced Audio Coding
@@ -140,10 +140,10 @@ public class ATranscodeTest extends AndroidTestCase {
 //        TestWrapper.runTest(this);
 //    }
     public void testExtractDecodeEditEncodeMuxAudioVideo() throws Throwable {
-//        setSize(1280, 720);
-        setSize(1920   , 1080);
-//        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
-        setSource(R.raw.bbb_s4_1280x720_mp4_h264_mp31_8mbps_30fps_aac_he_mono_40kbps_44100hz);
+        setSize(1280, 720);
+//        setSize(1920   , 1080);
+        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
+//        setSource(R.raw.bbb_s4_1280x720_mp4_h264_mp31_8mbps_30fps_aac_he_mono_40kbps_44100hz);
 //        setCopyAudio();
         setCopyVideo();
         TestWrapper.runTest(this);
@@ -321,27 +321,23 @@ public class ATranscodeTest extends AndroidTestCase {
                 int videoInputTrack = getAndSelectVideoTrackIndex(mVideoExtractor);
                 assertTrue("missing video track in test video", videoInputTrack != -1);
                 MediaFormat inputFormat = mVideoExtractor.getTrackFormat(videoInputTrack);
-
                 // We avoid the device-specific limitations on width and height by using values
                 // that are multiples of 16, which all tested devices seem to be able to handle.
                 MediaFormat outputVideoFormat =
-                        MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE, mWidth, mHeight);
+                        MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE,  mWidth  ,  mHeight);
 
                 // Set some properties. Failing to specify some of these can cause the MediaCodec
                 // configure() call to throw an unhelpful exception.
 
-                outputVideoFormat.setInteger(
-                        MediaFormat.KEY_COLOR_FORMAT, selectColorFormat(videoCodecInfo,OUTPUT_VIDEO_MIME_TYPE));
+//                outputVideoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, selectColorFormat(videoCodecInfo,OUTPUT_VIDEO_MIME_TYPE));
+                outputVideoFormat.setInteger( MediaFormat.KEY_COLOR_FORMAT, OUTPUT_VIDEO_COLOR_FORMAT);
                 outputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, OUTPUT_VIDEO_BIT_RATE);
                 outputVideoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, OUTPUT_VIDEO_FRAME_RATE);
                 outputVideoFormat.setInteger(
                         MediaFormat.KEY_I_FRAME_INTERVAL, OUTPUT_VIDEO_IFRAME_INTERVAL);
                 if (VERBOSE) Log.i(TAG, "video format: " + outputVideoFormat);
+                mVideoEncoder = createVideoEncoder(videoCodecInfo, outputVideoFormat);
 
-                // Create a MediaCodec for the desired codec, then configure it as an encoder with
-                // our desired properties. Request a Surface to use for input.
-                mVideoEncoder = createVideoEncoder(
-                        videoCodecInfo, outputVideoFormat);
                 mVideoDecoder = createVideoDecoder(inputFormat);
             }
 
@@ -363,7 +359,10 @@ public class ATranscodeTest extends AndroidTestCase {
             }
 
             awaitEncode();
-        } finally {
+        } catch(Exception e)
+        {
+            Log.e(TAG, "error ....", e);
+        }finally {
             if (VERBOSE) Log.i(TAG, "releasing extractor, decoder, encoder, and muxer");
             // Try to release everything we acquired, even if one of the releases fails, in which
             // case we save the first exception we got and re-throw at the end (unless something
@@ -436,6 +435,7 @@ public class ATranscodeTest extends AndroidTestCase {
             }
             try {
                 if (mMuxer != null) {
+                    if(mMuxing)
                     mMuxer.stop();
                     mMuxer.release();
                 }
@@ -535,6 +535,13 @@ public class ATranscodeTest extends AndroidTestCase {
                     Log.i(TAG, "video decoder: output format changed: "
                             + mDecoderOutputVideoFormat);
                 }
+//                MediaCodecInfo videoCodecInfo = selectCodec(OUTPUT_VIDEO_MIME_TYPE);
+//                try {
+//                    mVideoEncoder = createVideoEncoder(videoCodecInfo, mDecoderOutputVideoFormat);
+//                }catch (Exception e){
+//                    Log.d(TAG,"create videio encode error",e);
+//                }
+
             }
             public void onInputBufferAvailable(MediaCodec codec, int index) {
                 // Extract video from file and feed to decoder.
@@ -582,6 +589,7 @@ public class ATranscodeTest extends AndroidTestCase {
                     codec.releaseOutputBuffer(index, false);
                     return;
                 }
+
                 if (VERBOSE) {
                     Log.i(TAG, "video decoder: returned buffer for time " + info.presentationTimeUs+"\tsize:"+info.size);
                 }
