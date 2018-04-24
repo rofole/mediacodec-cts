@@ -34,46 +34,51 @@ import android.test.AndroidTestCase;
 import android.util.Log;
 import android.view.Surface;
 
-import com.android.cts.R;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Test for the integration of MediaMuxer and MediaCodec's encoder.
- *
+ * <p>
  * <p>It uses MediaExtractor to get frames from a test stream, decodes them to a surface, uses a
  * shader to edit them, encodes them from the resulting surface, and then uses MediaMuxer to write
  * them into a file.
- *
+ * <p>
  * <p>It does not currently check whether the result file is correct, but makes sure that nothing
  * fails along the way.
- *
+ * <p>
  * <p>It also tests the way the codec config buffers need to be passed from the MediaCodec to the
  * MediaMuxer.
  */
-@TargetApi(18)
+@TargetApi(21)
 public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
 
     private static final String TAG = AsynExtractDecodeEditEncodeMuxTest.class.getSimpleName();
     private static final boolean VERBOSE = true; // lots of logging
 
-    /** How long to wait for the next buffer to become available. */
+    /**
+     * How long to wait for the next buffer to become available.
+     */
     private static final int TIMEOUT_USEC = 10000;
 
-    /** Where to output the test files. */
+    /**
+     * Where to output the test files.
+     */
     private static final File OUTPUT_FILENAME_DIR = Environment.getExternalStorageDirectory();
 
     // parameters for the video encoder
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
-    private static final int OUTPUT_VIDEO_BIT_RATE = 2000000; // 2Mbps
+    private static final int OUTPUT_VIDEO_BIT_RATE = 3000000; // 2Mbps
     private static final int OUTPUT_VIDEO_FRAME_RATE = 15; // 15fps
     private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 0; // 10 seconds between I-frames
     private static final int OUTPUT_VIDEO_COLOR_FORMAT =
             MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface;
+
+    private static final boolean setBundleParam = false;
 
     // parameters for the audio encoder
     private static final String OUTPUT_AUDIO_MIME_TYPE = "audio/mp4a-latm"; // Advanced Audio Coding
@@ -85,31 +90,43 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
 
     /**
      * Used for editing the frames.
-     *
+     * <p>
      * <p>Swaps green and blue channels by storing an RBGA color in an RGBA buffer.
      */
     private static final String FRAGMENT_SHADER =
             "#extension GL_OES_EGL_image_external : require\n" +
-            "precision mediump float;\n" +
-            "varying vec2 vTextureCoord;\n" +
-            "uniform samplerExternalOES sTexture;\n" +
-            "void main() {\n" +
-            "  gl_FragColor = texture2D(sTexture, vTextureCoord).rbga;\n" +
-            "}\n";
+                    "precision mediump float;\n" +
+                    "varying vec2 vTextureCoord;\n" +
+                    "uniform samplerExternalOES sTexture;\n" +
+                    "void main() {\n" +
+                    "  gl_FragColor = texture2D(sTexture, vTextureCoord).rbga;\n" +
+                    "}\n";
 
-    /** Whether to copy the video from the test video. */
+    /**
+     * Whether to copy the video from the test video.
+     */
     private boolean mCopyVideo;
-    /** Whether to copy the audio from the test video. */
+    /**
+     * Whether to copy the audio from the test video.
+     */
     private boolean mCopyAudio;
-    /** Width of the output frames. */
+    /**
+     * Width of the output frames.
+     */
     private int mWidth = -1;
-    /** Height of the output frames. */
+    /**
+     * Height of the output frames.
+     */
     private int mHeight = -1;
 
-    /** The raw resource used as the input file. */
+    /**
+     * The raw resource used as the input file.
+     */
     private int mSourceResId;
 
-    /** The destination file for the encoded output. */
+    /**
+     * The destination file for the encoded output.
+     */
     private String mOutputFile;
 
     public void testExtractDecodeEditEncodeMuxQCIF() throws Throwable {
@@ -141,14 +158,19 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
     }
 
     public void testExtractDecodeEditEncodeMuxAudioVideo() throws Throwable {
+//        setSize(640, 360);
+//        setSize(960, 540);
         setSize(1280, 720);
-        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
-        setCopyAudio();
+//        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
+        setSource(R.raw.bbb_s4_1280x720_mp4_h264_mp31_8mbps_30fps_aac_he_mono_40kbps_44100hz);
+//        setCopyAudio();
         setCopyVideo();
         TestWrapper.runTest(this);
     }
 
-    /** Wraps testExtractDecodeEditEncodeMux() */
+    /**
+     * Wraps testExtractDecodeEditEncodeMux()
+     */
     private static class TestWrapper implements Runnable {
         private Throwable mThrowable;
         private AsynExtractDecodeEditEncodeMuxTest mTest;
@@ -159,16 +181,25 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
 
         @Override
         public void run() {
-            long beginTime=System.currentTimeMillis();
+            long beginTime = System.currentTimeMillis();
             try {
 
                 mTest.extractDecodeEditEncodeMux();
             } catch (Throwable th) {
                 mThrowable = th;
-            }finally {
+            } finally {
                 long elapseTime = System.currentTimeMillis() - beginTime;
                 Log.i(TAG, "elapse time:" + elapseTime);
 //                Log.i(TAG, "size1:" + size1 / 1024 + ",size2:" + size2 / 1024 + ",elapseTimeHandlerBuffer:" + elapseTimeHandlerBuffer / 1000000 + ", elapseTimeWrite:" + elapseTimeWrite / 1000000);
+
+                String destFileName = OUTPUT_FILENAME_DIR.getAbsolutePath() + "/cts/" + android.os.Build.BRAND + "_" + android.os.Build.MODEL + "_" + android.os.Build.VERSION.RELEASE + "_"
+                        + elapseTime + "_" + OUTPUT_VIDEO_IFRAME_INTERVAL + "_" + setBundleParam + ".mp4";
+                File srcFile = new File(mTest.mOutputFile);
+                File destFile = new File(destFileName);
+                destFile.delete();
+                srcFile.renameTo(new File(destFileName));
+                Log.i(TAG, "transcode:" + destFileName);
+
 
             }
         }
@@ -222,7 +253,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
 
     /**
      * Sets the name of the output file based on the other parameters.
-     *
+     * <p>
      * <p>Must be called after {@link #setSize(int, int)} and {@link #setSource(int)}.
      */
     private void setOutputFile() {
@@ -249,7 +280,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
 //        }
 //        sb.append(".mp4");
 //        mOutputFile = sb.toString();
-        mOutputFile=OUTPUT_FILENAME_DIR.getAbsolutePath()+"/cts/cts01.mp4";
+        mOutputFile = OUTPUT_FILENAME_DIR.getAbsolutePath() + "/cts/cts01.mp4";
     }
 
     private MediaExtractor mVideoExtractor = null;
@@ -387,7 +418,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 if (mVideoExtractor != null) {
                     mVideoExtractor.release();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Log.e(TAG, "error while releasing videoExtractor", e);
                 if (exception == null) {
                     exception = e;
@@ -397,7 +428,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 if (mAudioExtractor != null) {
                     mAudioExtractor.release();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Log.e(TAG, "error while releasing audioExtractor", e);
                 if (exception == null) {
                     exception = e;
@@ -408,7 +439,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                     mVideoDecoder.stop();
                     mVideoDecoder.release();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Log.e(TAG, "error while releasing videoDecoder", e);
                 if (exception == null) {
                     exception = e;
@@ -418,7 +449,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 if (mOutputSurface != null) {
                     mOutputSurface.release();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Log.e(TAG, "error while releasing outputSurface", e);
                 if (exception == null) {
                     exception = e;
@@ -429,7 +460,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                     mVideoEncoder.stop();
                     mVideoEncoder.release();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Log.e(TAG, "error while releasing videoEncoder", e);
                 if (exception == null) {
                     exception = e;
@@ -440,7 +471,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                     mAudioDecoder.stop();
                     mAudioDecoder.release();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Log.e(TAG, "error while releasing audioDecoder", e);
                 if (exception == null) {
                     exception = e;
@@ -451,7 +482,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                     mAudioEncoder.stop();
                     mAudioEncoder.release();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Log.e(TAG, "error while releasing audioEncoder", e);
                 if (exception == null) {
                     exception = e;
@@ -462,7 +493,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                     mMuxer.stop();
                     mMuxer.release();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Log.e(TAG, "error while releasing muxer", e);
                 if (exception == null) {
                     exception = e;
@@ -472,7 +503,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 if (mInputSurface != null) {
                     mInputSurface.release();
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 Log.e(TAG, "error while releasing inputSurface", e);
                 if (exception == null) {
                     exception = e;
@@ -513,11 +544,13 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
         CallbackHandler(Looper l) {
             super(l);
         }
+
         private MediaCodec mCodec;
         private boolean mEncoder;
         private MediaCodec.Callback mCallback;
         private String mMime;
         private boolean mSetDone;
+
         @Override
         public void handleMessage(Message msg) {
             try {
@@ -530,6 +563,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 notifyAll();
             }
         }
+
         void create(boolean encoder, String mime, MediaCodec.Callback callback) {
             mEncoder = encoder;
             mMime = mime;
@@ -545,10 +579,12 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 }
             }
         }
+
         MediaCodec getCodec() {
             return mCodec;
         }
     }
+
     private HandlerThread mVideoDecoderHandlerThread;
     private CallbackHandler mVideoDecoderHandler;
 
@@ -556,7 +592,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
      * Creates a decoder for the given format, which outputs to the given surface.
      *
      * @param inputFormat the format of the stream to decode
-     * @param surface into which to decode the frames
+     * @param surface     into which to decode the frames
      */
     private MediaCodec createVideoDecoder(MediaFormat inputFormat, Surface surface) throws IOException {
         mVideoDecoderHandlerThread = new HandlerThread("DecoderThread");
@@ -565,6 +601,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
         MediaCodec.Callback callback = new MediaCodec.Callback() {
             public void onError(MediaCodec codec, MediaCodec.CodecException exception) {
             }
+
             public void onOutputFormatChanged(MediaCodec codec, MediaFormat format) {
                 mDecoderOutputVideoFormat = codec.getOutputFormat();
                 if (VERBOSE) {
@@ -572,6 +609,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                             + mDecoderOutputVideoFormat);
                 }
             }
+
             public void onInputBufferAvailable(MediaCodec codec, int index) {
                 // Extract video from file and feed to decoder.
                 // We feed packets regardless of whether the muxer is set up or not.
@@ -609,6 +647,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                         break;
                 }
             }
+
             public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
                 if (VERBOSE) {
                     Log.d(TAG, "video decoder: returned output buffer: " + index);
@@ -626,11 +665,11 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 boolean render = info.size != 0;
                 codec.releaseOutputBuffer(index, render);
                 if (render) {
-
-                    Bundle b = new Bundle();
-                    b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
-                    mVideoEncoder.setParameters(b);
-
+                    if (setBundleParam) {
+                        Bundle b = new Bundle();
+                        b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+                        mVideoEncoder.setParameters(b);
+                    }
                     mInputSurface.makeCurrent();
                     if (VERBOSE) Log.d(TAG, "output surface: await new image");
                     mOutputSurface.awaitNewImage();
@@ -675,21 +714,41 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
     /**
      * Creates an encoder for the given format using the specified codec, taking input from a
      * surface.
-     *
+     * <p>
      * <p>The surface to use as input is stored in the given reference.
      *
-     * @param codecInfo of the codec to use
-     * @param format of the stream to be produced
+     * @param codecInfo        of the codec to use
+     * @param format           of the stream to be produced
      * @param surfaceReference to store the surface to use as input
      */
     private MediaCodec createVideoEncoder(
             MediaCodecInfo codecInfo,
             MediaFormat format,
             AtomicReference<Surface> surfaceReference) throws IOException {
+
+        MediaCodecInfo.CodecCapabilities codecCapabilities=codecInfo.getCapabilitiesForType(format.getString(MediaFormat.KEY_MIME));
+        MediaCodecInfo.VideoCapabilities videoCapabilities=codecCapabilities.getVideoCapabilities();
+        Log.i(TAG,"videoCapabilities.getBitrateRange();"+videoCapabilities.getBitrateRange());
+        Log.i(TAG,"videoCapabilities.getHeightAlignment():"+videoCapabilities.getHeightAlignment());
+
+        Log.i(TAG,"videoCapabilities.getSupportedFrameRates():"+videoCapabilities.getSupportedFrameRates());
+        Log.i(TAG,"videoCapabilities.getBitrateRange():"+videoCapabilities.getBitrateRange());
+        Log.i(TAG,"videoCapabilities.getSupportedHeights():"+videoCapabilities.getSupportedHeights());
+        Log.i(TAG,"videoCapabilities.getSupportedWidths():"+videoCapabilities.getSupportedWidths());
+        Log.i(TAG,"videoCapabilities.getSupportedHeightsFor(720)():"+videoCapabilities.getSupportedHeightsFor(720));
+        Log.i(TAG,"videoCapabilities.getSupportedWidthsFor(1280)():"+videoCapabilities.getSupportedWidthsFor(1280));
+
+        MediaCodecInfo.EncoderCapabilities encoderCapabilities=codecCapabilities.getEncoderCapabilities();
+                Log.i(TAG,"encoderCapabilities.getComplexityRange():"+encoderCapabilities.getComplexityRange());
+        Log.i(TAG,"encoderCapabilities.getBitrateRange():"+encoderCapabilities.isBitrateModeSupported(60000000));
+
+
+
         MediaCodec encoder = MediaCodec.createByCodecName(codecInfo.getName());
         encoder.setCallback(new MediaCodec.Callback() {
             public void onError(MediaCodec codec, MediaCodec.CodecException exception) {
             }
+
             public void onOutputFormatChanged(MediaCodec codec, MediaFormat format) {
                 if (VERBOSE) Log.d(TAG, "video encoder: output format changed");
                 if (mOutputVideoTrack >= 0) {
@@ -698,8 +757,10 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 mEncoderOutputVideoFormat = codec.getOutputFormat();
                 setupMuxer();
             }
+
             public void onInputBufferAvailable(MediaCodec codec, int index) {
             }
+
             public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
                 if (VERBOSE) {
                     Log.d(TAG, "video encoder: returned output buffer: " + index);
@@ -725,6 +786,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
         decoder.setCallback(new MediaCodec.Callback() {
             public void onError(MediaCodec codec, MediaCodec.CodecException exception) {
             }
+
             public void onOutputFormatChanged(MediaCodec codec, MediaFormat format) {
                 mDecoderOutputAudioFormat = codec.getOutputFormat();
                 if (VERBOSE) {
@@ -732,6 +794,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                             + mDecoderOutputAudioFormat);
                 }
             }
+
             public void onInputBufferAvailable(MediaCodec codec, int index) {
                 ByteBuffer decoderInputBuffer = codec.getInputBuffer(index);
                 while (!mAudioExtractorDone) {
@@ -765,6 +828,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                         break;
                 }
             }
+
             public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
                 if (VERBOSE) {
                     Log.d(TAG, "audio decoder: returned output buffer: " + index);
@@ -798,13 +862,14 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
      * Creates an encoder for the given format using the specified codec.
      *
      * @param codecInfo of the codec to use
-     * @param format of the stream to be produced
+     * @param format    of the stream to be produced
      */
     private MediaCodec createAudioEncoder(MediaCodecInfo codecInfo, MediaFormat format) throws IOException {
         MediaCodec encoder = MediaCodec.createByCodecName(codecInfo.getName());
         encoder.setCallback(new MediaCodec.Callback() {
             public void onError(MediaCodec codec, MediaCodec.CodecException exception) {
             }
+
             public void onOutputFormatChanged(MediaCodec codec, MediaFormat format) {
                 if (VERBOSE) Log.d(TAG, "audio encoder: output format changed");
                 if (mOutputAudioTrack >= 0) {
@@ -814,6 +879,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 mEncoderOutputAudioFormat = codec.getOutputFormat();
                 setupMuxer();
             }
+
             public void onInputBufferAvailable(MediaCodec codec, int index) {
                 if (VERBOSE) {
                     Log.d(TAG, "audio encoder: returned input buffer: " + index);
@@ -821,6 +887,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
                 mPendingAudioEncoderInputBufferIndices.add(index);
                 tryEncodeAudio();
             }
+
             public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
                 if (VERBOSE) {
                     Log.d(TAG, "audio encoder: returned output buffer: " + index);
@@ -838,7 +905,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
     // decoder callbacks are on the same thread.
     private void tryEncodeAudio() {
         if (mPendingAudioEncoderInputBufferIndices.size() == 0 ||
-            mPendingAudioDecoderOutputBufferIndices.size() == 0)
+                mPendingAudioDecoderOutputBufferIndices.size() == 0)
             return;
         int decoderIndex = mPendingAudioDecoderOutputBufferIndices.poll();
         int encoderIndex = mPendingAudioEncoderInputBufferIndices.poll();
@@ -938,6 +1005,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
         }
         logState();
     }
+
     private void muxAudio(int index, MediaCodec.BufferInfo info) {
         if (!mMuxing) {
             mPendingAudioEncoderOutputBufferIndices.add(new Integer(index));
@@ -972,7 +1040,7 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
 
     /**
      * Creates a muxer to write the encoded frames.
-     *
+     * <p>
      * <p>The muxer is not started as it needs to be started only after all streams have been added.
      */
     private MediaMuxer createMuxer() throws IOException {
@@ -1049,17 +1117,17 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
             Log.d(TAG, String.format(
                     "loop: "
 
-                    + "V(%b){"
-                    + "extracted:%d(done:%b) "
-                    + "decoded:%d(done:%b) "
-                    + "encoded:%d(done:%b)} "
+                            + "V(%b){"
+                            + "extracted:%d(done:%b) "
+                            + "decoded:%d(done:%b) "
+                            + "encoded:%d(done:%b)} "
 
-                    + "A(%b){"
-                    + "extracted:%d(done:%b) "
-                    + "decoded:%d(done:%b) "
-                    + "encoded:%d(done:%b) "
+                            + "A(%b){"
+                            + "extracted:%d(done:%b) "
+                            + "decoded:%d(done:%b) "
+                            + "encoded:%d(done:%b) "
 
-                    + "muxing:%b(V:%d,A:%d)",
+                            + "muxing:%b(V:%d,A:%d)",
 
                     mCopyVideo,
                     mVideoExtractedFrameCount, mVideoExtractorDone,
@@ -1116,10 +1184,26 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
      * found.
      */
     private static MediaCodecInfo selectCodec(String mimeType) {
-        int numCodecs = MediaCodecList.getCodecCount();
-        for (int i = 0; i < numCodecs; i++) {
-            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+//        int numCodecs = MediaCodecList.getCodecCount();
+//        for (int i = 0; i < numCodecs; i++) {
+//            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+//            if (!codecInfo.isEncoder()) {
+//                continue;
+//            }
+//
+//            String[] types = codecInfo.getSupportedTypes();
+//            for (int j = 0; j < types.length; j++) {
+//                if (types[j].equalsIgnoreCase(mimeType)) {
+//                    return codecInfo;
+//                }
+//            }
+//        }
+//        return null;
 
+        MediaCodecList mediaCodecList = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
+
+        for (MediaCodecInfo codecInfo : mediaCodecList.getCodecInfos()) {
+            Log.i(TAG, "avaliable codec:" + codecInfo.getName());
             if (!codecInfo.isEncoder()) {
                 continue;
             }
@@ -1127,11 +1211,13 @@ public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
             String[] types = codecInfo.getSupportedTypes();
             for (int j = 0; j < types.length; j++) {
                 if (types[j].equalsIgnoreCase(mimeType)) {
+                    Log.i(TAG, "use codecName:" + codecInfo.getName()+"\t"+ Arrays.asList(codecInfo.getSupportedTypes()));
                     return codecInfo;
                 }
             }
         }
         return null;
+
     }
 
 }

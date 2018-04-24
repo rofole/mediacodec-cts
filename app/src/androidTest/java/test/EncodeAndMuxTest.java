@@ -28,9 +28,13 @@ import android.opengl.EGLExt;
 import android.opengl.EGLSurface;
 import android.opengl.GLES20;
 import android.os.Environment;
+import android.support.test.runner.AndroidJUnit4;
 import android.test.AndroidTestCase;
 import android.util.Log;
 import android.view.Surface;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,6 +53,7 @@ import java.nio.ByteBuffer;
  * (This was derived from bits and pieces of CTS tests, and is packaged as such, but is not
  * currently part of CTS.)
  */
+@RunWith(AndroidJUnit4.class)
 public class EncodeAndMuxTest extends AndroidTestCase {
     private static final String TAG = "EncodeAndMuxTest";
     private static final boolean VERBOSE = false;           // lots of logging
@@ -90,6 +95,7 @@ public class EncodeAndMuxTest extends AndroidTestCase {
     /**
      * Tests encoding of AVC video from a Surface.  The output is saved as an MP4 file.
      */
+    @Test
     public void testEncodeVideoToMp4() {
         // QVGA at 2Mbps
         mWidth = 320;

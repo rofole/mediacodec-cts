@@ -75,7 +75,7 @@ public class ExtractDecodeEditEncodeMuxTest  extends  AExampleInstrumentedTest{
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
     private static final int OUTPUT_VIDEO_BIT_RATE = 1024*1024*2; // 2Mbps
     private static final int OUTPUT_VIDEO_FRAME_RATE = 15; // 15fps
-    private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 1; // 10 seconds between I-frames
+    private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = -1; // 10 seconds between I-frames
     private static final int OUTPUT_VIDEO_COLOR_FORMAT =
             MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface;
 
