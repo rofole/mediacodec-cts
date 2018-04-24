@@ -24,7 +24,7 @@ import android.media.MediaFormat;
 import android.util.Log;
 import android.view.Surface;
 
-import com.android.cts.main.R;
+import com.android.cts.R;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;

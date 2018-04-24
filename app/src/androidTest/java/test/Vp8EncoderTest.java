@@ -24,7 +24,7 @@ import android.media.MediaFormat;
 import android.test.AndroidTestCase;
 import android.util.Log;
 
-import com.android.cts.main.R;
+import com.android.cts.R;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;

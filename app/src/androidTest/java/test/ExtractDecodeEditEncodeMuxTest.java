@@ -24,13 +24,14 @@ import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
-import android.os.Bundle;
 import android.os.Environment;
 import android.support.test.runner.AndroidJUnit4;
 import android.util.Log;
 import android.view.Surface;
 
-import com.android.cts.main.*;
+import com.android.cts.R;
+import com.android.cts.Utils;
+import com.android.cts.*;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -61,7 +62,7 @@ public class ExtractDecodeEditEncodeMuxTest  extends  AExampleInstrumentedTest{
     private static final boolean VERBOSE = true; // lots of logging
 
     /**
-     * How long to wait for the next buffer to become available.
+     * How long to wait for the next buffer to become available.ƒ
      */
     private static final int TIMEOUT_USEC = 10000;
 
@@ -72,8 +73,8 @@ public class ExtractDecodeEditEncodeMuxTest  extends  AExampleInstrumentedTest{
 
     // parameters for the video encoder
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
-    private static final int OUTPUT_VIDEO_BIT_RATE = 10000000; // 2Mbps
-    private static final int OUTPUT_VIDEO_FRAME_RATE = 30; // 15fps
+    private static final int OUTPUT_VIDEO_BIT_RATE = 1024*1024*2; // 2Mbps
+    private static final int OUTPUT_VIDEO_FRAME_RATE = 15; // 15fps
     private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 1; // 10 seconds between I-frames
     private static final int OUTPUT_VIDEO_COLOR_FORMAT =
             MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface;
@@ -848,9 +849,9 @@ public class ExtractDecodeEditEncodeMuxTest  extends  AExampleInstrumentedTest{
                 boolean render = videoDecoderOutputBufferInfo.size != 0;
                 videoDecoder.releaseOutputBuffer(decoderOutputBufferIndex, render);
                 if (render) {
-                    Bundle b = new Bundle();
-                    b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
-                    videoEncoder.setParameters(b);
+//                    Bundle b = new Bundle();
+//                    b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+//                    videoEncoder.setParameters(b);
 
                     if (VERBOSE) Log.i(TAG, "output surface: await new image");
                     outputSurface.awaitNewImage();

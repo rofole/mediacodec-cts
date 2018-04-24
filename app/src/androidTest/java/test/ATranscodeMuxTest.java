@@ -29,7 +29,8 @@ import android.support.test.runner.AndroidJUnit4;
 import android.util.Log;
 import android.view.Surface;
 
-import com.android.cts.main.*;
+
+import com.android.cts.R;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

@@ -21,7 +21,8 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
-import com.android.cts.main.R;
+import com.android.cts.R;
+
 
 public class MediaStubActivity extends Activity {
     private static final String TAG = "MediaStubActivity";

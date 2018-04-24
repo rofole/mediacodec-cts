@@ -20,7 +20,8 @@ import android.app.Activity;
 import android.media.FaceDetector.Face;
 import android.os.Bundle;
 
-import com.android.cts.main.R;
+
+import com.android.cts.R;
 
 import java.util.List;
 

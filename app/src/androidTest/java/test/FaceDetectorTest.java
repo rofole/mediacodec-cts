@@ -20,7 +20,7 @@ package test;
 import android.content.Intent;
 import android.test.InstrumentationTestCase;
 
-import com.android.cts.main.R;
+import com.android.cts.R;
 
 public class FaceDetectorTest extends InstrumentationTestCase {
 

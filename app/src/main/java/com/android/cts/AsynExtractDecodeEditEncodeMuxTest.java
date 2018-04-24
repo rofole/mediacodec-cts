@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.cts.main;
+package com.android.cts;
 
 import android.annotation.TargetApi;
 import android.content.res.AssetFileDescriptor;
@@ -32,10 +32,14 @@ import android.os.Looper;
 import android.os.Message;
 import android.test.AndroidTestCase;
 import android.util.Log;
+import android.view.Surface;
+
+import com.android.cts.R;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.LinkedList;
 
 /**
@@ -52,23 +56,24 @@ import java.util.LinkedList;
  * MediaMuxer.
  */
 @TargetApi(18)
-public class ATranscodeTest extends AndroidTestCase {
+public class AsynExtractDecodeEditEncodeMuxTest extends AndroidTestCase {
 
-    private static final String TAG = Utils.TAG;
+    private static final String TAG = AsynExtractDecodeEditEncodeMuxTest.class.getSimpleName();
     private static final boolean VERBOSE = true; // lots of logging
 
     /** How long to wait for the next buffer to become available. */
+    private static final int TIMEOUT_USEC = 10000;
 
     /** Where to output the test files. */
     private static final File OUTPUT_FILENAME_DIR = Environment.getExternalStorageDirectory();
 
     // parameters for the video encoder
     private static final String OUTPUT_VIDEO_MIME_TYPE = "video/avc"; // H.264 Advanced Video Coding
-    private static final int OUTPUT_VIDEO_BIT_RATE = 4000000; // 2Mbps
-    private static final int OUTPUT_VIDEO_FRAME_RATE = 25; // 15fps
+    private static final int OUTPUT_VIDEO_BIT_RATE = 2000000; // 2Mbps
+    private static final int OUTPUT_VIDEO_FRAME_RATE = 15; // 15fps
     private static final int OUTPUT_VIDEO_IFRAME_INTERVAL = 0; // 10 seconds between I-frames
     private static final int OUTPUT_VIDEO_COLOR_FORMAT =
-            MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar;
+            MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface;
 
     // parameters for the audio encoder
     private static final String OUTPUT_AUDIO_MIME_TYPE = "audio/mp4a-latm"; // Advanced Audio Coding
@@ -78,22 +83,19 @@ public class ATranscodeTest extends AndroidTestCase {
             MediaCodecInfo.CodecProfileLevel.AACObjectHE;
     private static final int OUTPUT_AUDIO_SAMPLE_RATE_HZ = 44100; // Must match the input stream.
 
-
-    private MediaExtractor mVideoExtractor = null;
-    private MediaExtractor mAudioExtractor = null;
-//    private InputSurface mInputSurface = null;
-//    private OutputSurface mOutputSurface = null;
-    private MediaCodec mVideoDecoder = null;
-    private MediaCodec mAudioDecoder = null;
-    private MediaCodec mVideoEncoder = null;
-    private MediaCodec mAudioEncoder = null;
-    private MediaMuxer mMuxer = null;
     /**
      * Used for editing the frames.
      *
      * <p>Swaps green and blue channels by storing an RBGA color in an RGBA buffer.
      */
-
+    private static final String FRAGMENT_SHADER =
+            "#extension GL_OES_EGL_image_external : require\n" +
+            "precision mediump float;\n" +
+            "varying vec2 vTextureCoord;\n" +
+            "uniform samplerExternalOES sTexture;\n" +
+            "void main() {\n" +
+            "  gl_FragColor = texture2D(sTexture, vTextureCoord).rbga;\n" +
+            "}\n";
 
     /** Whether to copy the video from the test video. */
     private boolean mCopyVideo;
@@ -110,39 +112,38 @@ public class ATranscodeTest extends AndroidTestCase {
     /** The destination file for the encoded output. */
     private String mOutputFile;
 
-//    public void testExtractDecodeEditEncodeMuxQCIF() throws Throwable {
-//        setSize(176, 144);
-//        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
-//        setCopyVideo();
-//        TestWrapper.runTest(this);
-//    }
-//
-//    public void testExtractDecodeEditEncodeMuxQVGA() throws Throwable {
-//        setSize(320, 240);
-//        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
-//        setCopyVideo();
-//        TestWrapper.runTest(this);
-//    }
-//
-//    public void testExtractDecodeEditEncodeMux720p() throws Throwable {
-//        setSize(1280, 720);
-//        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
-//        setCopyVideo();
-//        TestWrapper.runTest(this);
-//    }
-//
-//    public void testExtractDecodeEditEncodeMuxAudio() throws Throwable {
-//        setSize(1280, 720);
-//        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
-//        setCopyAudio();
-//        TestWrapper.runTest(this);
-//    }
+    public void testExtractDecodeEditEncodeMuxQCIF() throws Throwable {
+        setSize(176, 144);
+        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
+        setCopyVideo();
+        TestWrapper.runTest(this);
+    }
+
+    public void testExtractDecodeEditEncodeMuxQVGA() throws Throwable {
+        setSize(320, 240);
+        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
+        setCopyVideo();
+        TestWrapper.runTest(this);
+    }
+
+    public void testExtractDecodeEditEncodeMux720p() throws Throwable {
+        setSize(1280, 720);
+        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
+        setCopyVideo();
+        TestWrapper.runTest(this);
+    }
+
+    public void testExtractDecodeEditEncodeMuxAudio() throws Throwable {
+        setSize(1280, 720);
+        setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
+        setCopyAudio();
+        TestWrapper.runTest(this);
+    }
+
     public void testExtractDecodeEditEncodeMuxAudioVideo() throws Throwable {
         setSize(1280, 720);
-//        setSize(1920   , 1080);
         setSource(R.raw.video_480x360_mp4_h264_500kbps_30fps_aac_stereo_128kbps_44100hz);
-//        setSource(R.raw.bbb_s4_1280x720_mp4_h264_mp31_8mbps_30fps_aac_he_mono_40kbps_44100hz);
-//        setCopyAudio();
+        setCopyAudio();
         setCopyVideo();
         TestWrapper.runTest(this);
     }
@@ -150,9 +151,9 @@ public class ATranscodeTest extends AndroidTestCase {
     /** Wraps testExtractDecodeEditEncodeMux() */
     private static class TestWrapper implements Runnable {
         private Throwable mThrowable;
-        private ATranscodeTest mTest;
+        private AsynExtractDecodeEditEncodeMuxTest mTest;
 
-        private TestWrapper(ATranscodeTest test) {
+        private TestWrapper(AsynExtractDecodeEditEncodeMuxTest test) {
             mTest = test;
         }
 
@@ -175,7 +176,7 @@ public class ATranscodeTest extends AndroidTestCase {
         /**
          * Entry point.
          */
-        public static void runTest(ATranscodeTest test) throws Throwable {
+        public static void runTest(AsynExtractDecodeEditEncodeMuxTest test) throws Throwable {
             test.setOutputFile();
             TestWrapper wrapper = new TestWrapper(test);
             Thread th = new Thread(wrapper, "codec test");
@@ -211,30 +212,7 @@ public class ATranscodeTest extends AndroidTestCase {
         mWidth = width;
         mHeight = height;
     }
-    private static int selectColorFormat(MediaCodecInfo codecInfo, String mimeType) {
-        MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType(mimeType);
-        for (int i = 0; i < capabilities.colorFormats.length; i++) {
-            int colorFormat = capabilities.colorFormats[i];
-            if (isRecognizedFormat(colorFormat)) {
-                return colorFormat;
-            }
-        }
-        fail("couldn't find a good color format for " + codecInfo.getName() + " / " + mimeType);
-        return 0;   // not reached
-    }
-    private static boolean isRecognizedFormat(int colorFormat) {
-        switch (colorFormat) {
-            // these are the formats we know how to handle for this test
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_TI_FormatYUV420PackedSemiPlanar:
-                return true;
-            default:
-                return false;
-        }
-    }
+
     /**
      * Sets the raw resource used as the source video.
      */
@@ -248,8 +226,41 @@ public class ATranscodeTest extends AndroidTestCase {
      * <p>Must be called after {@link #setSize(int, int)} and {@link #setSource(int)}.
      */
     private void setOutputFile() {
-        mOutputFile=Utils.generateNextMp4FileName();
+//        StringBuilder sb = new StringBuilder();
+//        sb.append(OUTPUT_FILENAME_DIR.getAbsolutePath());
+//        sb.append("/cts-media-");
+//        sb.append(getClass().getSimpleName());
+//        assertTrue("should have called setSource() first", mSourceResId != -1);
+//        sb.append('-');
+//        sb.append(mSourceResId);
+//        if (mCopyVideo) {
+//            assertTrue("should have called setSize() first", mWidth != -1);
+//            assertTrue("should have called setSize() first", mHeight != -1);
+//            sb.append('-');
+//            sb.append("video");
+//            sb.append('-');
+//            sb.append(mWidth);
+//            sb.append('x');
+//            sb.append(mHeight);
+//        }
+//        if (mCopyAudio) {
+//            sb.append('-');
+//            sb.append("audio");
+//        }
+//        sb.append(".mp4");
+//        mOutputFile = sb.toString();
+        mOutputFile=OUTPUT_FILENAME_DIR.getAbsolutePath()+"/cts/cts01.mp4";
     }
+
+    private MediaExtractor mVideoExtractor = null;
+    private MediaExtractor mAudioExtractor = null;
+    private InputSurface mInputSurface = null;
+    private OutputSurface mOutputSurface = null;
+    private MediaCodec mVideoDecoder = null;
+    private MediaCodec mAudioDecoder = null;
+    private MediaCodec mVideoEncoder = null;
+    private MediaCodec mAudioEncoder = null;
+    private MediaMuxer mMuxer = null;
 
     /**
      * Tests encoding and subsequently decoding video from frames generated into a buffer.
@@ -281,11 +292,6 @@ public class ATranscodeTest extends AndroidTestCase {
         mPendingVideoEncoderOutputBufferInfos = new LinkedList<MediaCodec.BufferInfo>();
         mPendingAudioEncoderOutputBufferIndices = new LinkedList<Integer>();
         mPendingAudioEncoderOutputBufferInfos = new LinkedList<MediaCodec.BufferInfo>();
-
-        mPendingVideoDecoderOutputBufferIndices=new LinkedList<Integer>() ;
-        mPendingVideoDecoderOutputBufferInfos=new LinkedList<MediaCodec.BufferInfo>();
-        mPendingVideoEncoderInputBufferIndices=new LinkedList<Integer>() ;
-
         mMuxing = false;
         mVideoExtractedFrameCount = 0;
         mVideoDecodedFrameCount = 0;
@@ -300,7 +306,7 @@ public class ATranscodeTest extends AndroidTestCase {
             Log.e(TAG, "Unable to find an appropriate codec for " + OUTPUT_VIDEO_MIME_TYPE);
             return;
         }
-        if (VERBOSE) Log.i(TAG, "video found codec: " + videoCodecInfo.getName());
+        if (VERBOSE) Log.d(TAG, "video found codec: " + videoCodecInfo.getName());
 
         MediaCodecInfo audioCodecInfo = selectCodec(OUTPUT_AUDIO_MIME_TYPE);
         if (audioCodecInfo == null) {
@@ -308,7 +314,7 @@ public class ATranscodeTest extends AndroidTestCase {
             Log.e(TAG, "Unable to find an appropriate codec for " + OUTPUT_AUDIO_MIME_TYPE);
             return;
         }
-        if (VERBOSE) Log.i(TAG, "audio found codec: " + audioCodecInfo.getName());
+        if (VERBOSE) Log.d(TAG, "audio found codec: " + audioCodecInfo.getName());
 
         try {
             // Creates a muxer but do not start or add tracks just yet.
@@ -319,24 +325,34 @@ public class ATranscodeTest extends AndroidTestCase {
                 int videoInputTrack = getAndSelectVideoTrackIndex(mVideoExtractor);
                 assertTrue("missing video track in test video", videoInputTrack != -1);
                 MediaFormat inputFormat = mVideoExtractor.getTrackFormat(videoInputTrack);
+
                 // We avoid the device-specific limitations on width and height by using values
                 // that are multiples of 16, which all tested devices seem to be able to handle.
                 MediaFormat outputVideoFormat =
-                        MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE,  mWidth  ,  mHeight);
+                        MediaFormat.createVideoFormat(OUTPUT_VIDEO_MIME_TYPE, mWidth, mHeight);
 
                 // Set some properties. Failing to specify some of these can cause the MediaCodec
                 // configure() call to throw an unhelpful exception.
-
-//                outputVideoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, selectColorFormat(videoCodecInfo,OUTPUT_VIDEO_MIME_TYPE));
-                outputVideoFormat.setInteger( MediaFormat.KEY_COLOR_FORMAT, OUTPUT_VIDEO_COLOR_FORMAT);
+                outputVideoFormat.setInteger(
+                        MediaFormat.KEY_COLOR_FORMAT, OUTPUT_VIDEO_COLOR_FORMAT);
                 outputVideoFormat.setInteger(MediaFormat.KEY_BIT_RATE, OUTPUT_VIDEO_BIT_RATE);
                 outputVideoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, OUTPUT_VIDEO_FRAME_RATE);
                 outputVideoFormat.setInteger(
                         MediaFormat.KEY_I_FRAME_INTERVAL, OUTPUT_VIDEO_IFRAME_INTERVAL);
-                if (VERBOSE) Log.i(TAG, "video format: " + outputVideoFormat);
-                mVideoEncoder = createVideoEncoder(videoCodecInfo, outputVideoFormat);
+                if (VERBOSE) Log.d(TAG, "video format: " + outputVideoFormat);
 
-                mVideoDecoder = createVideoDecoder(inputFormat);
+                // Create a MediaCodec for the desired codec, then configure it as an encoder with
+                // our desired properties. Request a Surface to use for input.
+                AtomicReference<Surface> inputSurfaceReference = new AtomicReference<Surface>();
+                mVideoEncoder = createVideoEncoder(
+                        videoCodecInfo, outputVideoFormat, inputSurfaceReference);
+                mInputSurface = new InputSurface(inputSurfaceReference.get());
+                mInputSurface.makeCurrent();
+                // Create a MediaCodec for the decoder, based on the extractor's format.
+                mOutputSurface = new OutputSurface();
+                mOutputSurface.changeFragmentShader(FRAGMENT_SHADER);
+                mVideoDecoder = createVideoDecoder(inputFormat, mOutputSurface.getSurface());
+                mInputSurface.releaseEGLContext();
             }
 
             if (mCopyAudio) {
@@ -352,16 +368,16 @@ public class ATranscodeTest extends AndroidTestCase {
                 outputAudioFormat.setInteger(MediaFormat.KEY_BIT_RATE, OUTPUT_AUDIO_BIT_RATE);
                 outputAudioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, OUTPUT_AUDIO_AAC_PROFILE);
 
+                // Create a MediaCodec for the desired codec, then configure it as an encoder with
+                // our desired properties. Request a Surface to use for input.
                 mAudioEncoder = createAudioEncoder(audioCodecInfo, outputAudioFormat);
+                // Create a MediaCodec for the decoder, based on the extractor's format.
                 mAudioDecoder = createAudioDecoder(inputFormat);
             }
 
             awaitEncode();
-        } catch(Exception e)
-        {
-            Log.e(TAG, "error ....", e);
-        }finally {
-            if (VERBOSE) Log.i(TAG, "releasing extractor, decoder, encoder, and muxer");
+        } finally {
+            if (VERBOSE) Log.d(TAG, "releasing extractor, decoder, encoder, and muxer");
             // Try to release everything we acquired, even if one of the releases fails, in which
             // case we save the first exception we got and re-throw at the end (unless something
             // other exception has already been thrown). This guarantees the first exception thrown
@@ -394,6 +410,16 @@ public class ATranscodeTest extends AndroidTestCase {
                 }
             } catch(Exception e) {
                 Log.e(TAG, "error while releasing videoDecoder", e);
+                if (exception == null) {
+                    exception = e;
+                }
+            }
+            try {
+                if (mOutputSurface != null) {
+                    mOutputSurface.release();
+                }
+            } catch(Exception e) {
+                Log.e(TAG, "error while releasing outputSurface", e);
                 if (exception == null) {
                     exception = e;
                 }
@@ -433,7 +459,6 @@ public class ATranscodeTest extends AndroidTestCase {
             }
             try {
                 if (mMuxer != null) {
-                    if(mMuxing)
                     mMuxer.stop();
                     mMuxer.release();
                 }
@@ -443,11 +468,23 @@ public class ATranscodeTest extends AndroidTestCase {
                     exception = e;
                 }
             }
+            try {
+                if (mInputSurface != null) {
+                    mInputSurface.release();
+                }
+            } catch(Exception e) {
+                Log.e(TAG, "error while releasing inputSurface", e);
+                if (exception == null) {
+                    exception = e;
+                }
+            }
             if (mVideoDecoderHandlerThread != null) {
                 mVideoDecoderHandlerThread.quitSafely();
             }
             mVideoExtractor = null;
             mAudioExtractor = null;
+            mOutputSurface = null;
+            mInputSurface = null;
             mVideoDecoder = null;
             mAudioDecoder = null;
             mVideoEncoder = null;
@@ -519,8 +556,9 @@ public class ATranscodeTest extends AndroidTestCase {
      * Creates a decoder for the given format, which outputs to the given surface.
      *
      * @param inputFormat the format of the stream to decode
+     * @param surface into which to decode the frames
      */
-    private MediaCodec createVideoDecoder(MediaFormat inputFormat) throws IOException {
+    private MediaCodec createVideoDecoder(MediaFormat inputFormat, Surface surface) throws IOException {
         mVideoDecoderHandlerThread = new HandlerThread("DecoderThread");
         mVideoDecoderHandlerThread.start();
         mVideoDecoderHandler = new CallbackHandler(mVideoDecoderHandlerThread.getLooper());
@@ -530,16 +568,9 @@ public class ATranscodeTest extends AndroidTestCase {
             public void onOutputFormatChanged(MediaCodec codec, MediaFormat format) {
                 mDecoderOutputVideoFormat = codec.getOutputFormat();
                 if (VERBOSE) {
-                    Log.i(TAG, "video decoder: output format changed: "
+                    Log.d(TAG, "video decoder: output format changed: "
                             + mDecoderOutputVideoFormat);
                 }
-//                MediaCodecInfo videoCodecInfo = selectCodec(OUTPUT_VIDEO_MIME_TYPE);
-//                try {
-//                    mVideoEncoder = createVideoEncoder(videoCodecInfo, mDecoderOutputVideoFormat);
-//                }catch (Exception e){
-//                    Log.d(TAG,"create videio encode error",e);
-//                }
-
             }
             public void onInputBufferAvailable(MediaCodec codec, int index) {
                 // Extract video from file and feed to decoder.
@@ -551,8 +582,8 @@ public class ATranscodeTest extends AndroidTestCase {
                     int size = mVideoExtractor.readSampleData(decoderInputBuffer, 0);
                     long presentationTime = mVideoExtractor.getSampleTime();
                     if (VERBOSE) {
-                        Log.i(TAG, "video extractor: returned buffer of size " + size);
-                        Log.i(TAG, "video extractor: returned buffer for time " + presentationTime);
+                        Log.d(TAG, "video extractor: returned buffer of size " + size);
+                        Log.d(TAG, "video extractor: returned buffer for time " + presentationTime);
                     }
                     if (size >= 0) {
                         codec.queueInputBuffer(
@@ -564,7 +595,7 @@ public class ATranscodeTest extends AndroidTestCase {
                     }
                     mVideoExtractorDone = !mVideoExtractor.advance();
                     if (mVideoExtractorDone) {
-                        if (VERBOSE) Log.i(TAG, "video extractor: EOS");
+                        if (VERBOSE) Log.d(TAG, "video extractor: EOS");
                         codec.queueInputBuffer(
                                 index,
                                 0,
@@ -580,46 +611,44 @@ public class ATranscodeTest extends AndroidTestCase {
             }
             public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
                 if (VERBOSE) {
-                    Log.i(TAG, "video decoder: returned output buffer: " + index+"\tsize:"+info.size);
+                    Log.d(TAG, "video decoder: returned output buffer: " + index);
+                    Log.d(TAG, "video decoder: returned buffer of size " + info.size);
                 }
                 if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                    if (VERBOSE) Log.i(TAG, "video decoder: codec config buffer");
+                    if (VERBOSE) Log.d(TAG, "video decoder: codec config buffer");
                     codec.releaseOutputBuffer(index, false);
                     return;
                 }
-
                 if (VERBOSE) {
-                    Log.i(TAG, "video decoder: returned buffer for time " + info.presentationTimeUs+"\tsize:"+info.size);
+                    Log.d(TAG, "video decoder: returned buffer for time "
+                            + info.presentationTimeUs);
                 }
-//                boolean render = info.size != 0;
-//                codec.releaseOutputBuffer(index, render);
-//                if (render) {
-//                    mInputSurface.makeCurrent();
-//                    if (VERBOSE) Log.i(TAG, "output surface: await new image");
-//                    mOutputSurface.awaitNewImage();
-//                    // Edit the frame and send it to the encoder.
-//                    if (VERBOSE) Log.i(TAG, "output surface: draw image");
-//                    mOutputSurface.drawImage();
-//                    mInputSurface.setPresentationTime(
-//                            info.presentationTimeUs * 1000);
-//                    if (VERBOSE) Log.i(TAG, "input surface: swap buffers");
-//                    mInputSurface.swapBuffers();
-//                    if (VERBOSE) Log.i(TAG, "video encoder: notified of new frame");
-//                    mInputSurface.releaseEGLContext();
-//                }
-//                if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-//                    if (VERBOSE) Log.i(TAG, "video decoder: EOS");
-//                    mVideoDecoderDone = true;
-//                    mVideoEncoder.signalEndOfInputStream();
-//                }
-//                mVideoDecodedFrameCount++;
+                boolean render = info.size != 0;
+                codec.releaseOutputBuffer(index, render);
+                if (render) {
 
+                    Bundle b = new Bundle();
+                    b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+                    mVideoEncoder.setParameters(b);
 
-                mPendingVideoDecoderOutputBufferIndices.add(index);
-                mPendingVideoDecoderOutputBufferInfos.add(info);
+                    mInputSurface.makeCurrent();
+                    if (VERBOSE) Log.d(TAG, "output surface: await new image");
+                    mOutputSurface.awaitNewImage();
+                    // Edit the frame and send it to the encoder.
+                    if (VERBOSE) Log.d(TAG, "output surface: draw image");
+                    mOutputSurface.drawImage();
+                    mInputSurface.setPresentationTime(info.presentationTimeUs * 1000);
+                    if (VERBOSE) Log.d(TAG, "input surface: swap buffers");
+                    mInputSurface.swapBuffers();
+                    if (VERBOSE) Log.d(TAG, "video encoder: notified of new frame");
+                    mInputSurface.releaseEGLContext();
+                }
+                if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                    if (VERBOSE) Log.d(TAG, "video decoder: EOS");
+                    mVideoDecoderDone = true;
+                    mVideoEncoder.signalEndOfInputStream();
+                }
                 mVideoDecodedFrameCount++;
-                tryEncodeVideo("onOutputBufferAvailable");
-
                 logState();
             }
         };
@@ -638,7 +667,7 @@ public class ATranscodeTest extends AndroidTestCase {
         // not essential to the actual transcoding.
         mVideoDecoderHandler.create(false, getMimeTypeFor(inputFormat), callback);
         MediaCodec decoder = mVideoDecoderHandler.getCodec();
-        decoder.configure(inputFormat, null, null, 0);
+        decoder.configure(inputFormat, surface, null, 0);
         decoder.start();
         return decoder;
     }
@@ -651,18 +680,18 @@ public class ATranscodeTest extends AndroidTestCase {
      *
      * @param codecInfo of the codec to use
      * @param format of the stream to be produced
+     * @param surfaceReference to store the surface to use as input
      */
     private MediaCodec createVideoEncoder(
             MediaCodecInfo codecInfo,
-            MediaFormat format
-            ) throws IOException {
+            MediaFormat format,
+            AtomicReference<Surface> surfaceReference) throws IOException {
         MediaCodec encoder = MediaCodec.createByCodecName(codecInfo.getName());
         encoder.setCallback(new MediaCodec.Callback() {
             public void onError(MediaCodec codec, MediaCodec.CodecException exception) {
-                exception.printStackTrace();
             }
             public void onOutputFormatChanged(MediaCodec codec, MediaFormat format) {
-                if (VERBOSE) Log.i(TAG, "video encoder: output format changed");
+                if (VERBOSE) Log.d(TAG, "video encoder: output format changed");
                 if (mOutputVideoTrack >= 0) {
                     fail("video encoder changed its output format again?");
                 }
@@ -670,19 +699,18 @@ public class ATranscodeTest extends AndroidTestCase {
                 setupMuxer();
             }
             public void onInputBufferAvailable(MediaCodec codec, int index) {
-                Log.i(TAG, "video encoder: onInputBufferAvailable: " + index);
-                mPendingVideoEncoderInputBufferIndices.add(index);
-                tryEncodeVideo("onInputBufferAvailable");
             }
             public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
                 if (VERBOSE) {
-                    Log.i(TAG, "video encoder: returned output buffer: " + index+"\t"+info.size);
+                    Log.d(TAG, "video encoder: returned output buffer: " + index);
+                    Log.d(TAG, "video encoder: returned buffer of size " + info.size);
                 }
                 muxVideo(index, info);
             }
         });
         encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         // Must be called before start() is.
+        surfaceReference.set(encoder.createInputSurface());
         encoder.start();
         return encoder;
     }
@@ -700,7 +728,7 @@ public class ATranscodeTest extends AndroidTestCase {
             public void onOutputFormatChanged(MediaCodec codec, MediaFormat format) {
                 mDecoderOutputAudioFormat = codec.getOutputFormat();
                 if (VERBOSE) {
-                    Log.i(TAG, "audio decoder: output format changed: "
+                    Log.d(TAG, "audio decoder: output format changed: "
                             + mDecoderOutputAudioFormat);
                 }
             }
@@ -710,8 +738,8 @@ public class ATranscodeTest extends AndroidTestCase {
                     int size = mAudioExtractor.readSampleData(decoderInputBuffer, 0);
                     long presentationTime = mAudioExtractor.getSampleTime();
                     if (VERBOSE) {
-                        Log.i(TAG, "audio extractor: returned buffer of size " + size);
-                        Log.i(TAG, "audio extractor: returned buffer for time " + presentationTime);
+                        Log.d(TAG, "audio extractor: returned buffer of size " + size);
+                        Log.d(TAG, "audio extractor: returned buffer for time " + presentationTime);
                     }
                     if (size >= 0) {
                         codec.queueInputBuffer(
@@ -723,7 +751,7 @@ public class ATranscodeTest extends AndroidTestCase {
                     }
                     mAudioExtractorDone = !mAudioExtractor.advance();
                     if (mAudioExtractorDone) {
-                        if (VERBOSE) Log.i(TAG, "audio extractor: EOS");
+                        if (VERBOSE) Log.d(TAG, "audio extractor: EOS");
                         codec.queueInputBuffer(
                                 index,
                                 0,
@@ -739,19 +767,19 @@ public class ATranscodeTest extends AndroidTestCase {
             }
             public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
                 if (VERBOSE) {
-                    Log.i(TAG, "audio decoder: returned output buffer: " + index);
+                    Log.d(TAG, "audio decoder: returned output buffer: " + index);
                 }
                 if (VERBOSE) {
-                    Log.i(TAG, "audio decoder: returned buffer of size " + info.size);
+                    Log.d(TAG, "audio decoder: returned buffer of size " + info.size);
                 }
                 ByteBuffer decoderOutputBuffer = codec.getOutputBuffer(index);
                 if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                    if (VERBOSE) Log.i(TAG, "audio decoder: codec config buffer");
+                    if (VERBOSE) Log.d(TAG, "audio decoder: codec config buffer");
                     codec.releaseOutputBuffer(index, false);
                     return;
                 }
                 if (VERBOSE) {
-                    Log.i(TAG, "audio decoder: returned buffer for time "
+                    Log.d(TAG, "audio decoder: returned buffer for time "
                             + info.presentationTimeUs);
                 }
                 mPendingAudioDecoderOutputBufferIndices.add(index);
@@ -778,7 +806,7 @@ public class ATranscodeTest extends AndroidTestCase {
             public void onError(MediaCodec codec, MediaCodec.CodecException exception) {
             }
             public void onOutputFormatChanged(MediaCodec codec, MediaFormat format) {
-                if (VERBOSE) Log.i(TAG, "audio encoder: output format changed");
+                if (VERBOSE) Log.d(TAG, "audio encoder: output format changed");
                 if (mOutputAudioTrack >= 0) {
                     fail("audio encoder changed its output format again?");
                 }
@@ -788,15 +816,15 @@ public class ATranscodeTest extends AndroidTestCase {
             }
             public void onInputBufferAvailable(MediaCodec codec, int index) {
                 if (VERBOSE) {
-                    Log.i(TAG, "audio encoder: returned input buffer: " + index);
+                    Log.d(TAG, "audio encoder: returned input buffer: " + index);
                 }
                 mPendingAudioEncoderInputBufferIndices.add(index);
                 tryEncodeAudio();
             }
             public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
                 if (VERBOSE) {
-                    Log.i(TAG, "audio encoder: returned output buffer: " + index);
-                    Log.i(TAG, "audio encoder: returned buffer of size " + info.size);
+                    Log.d(TAG, "audio encoder: returned output buffer: " + index);
+                    Log.d(TAG, "audio encoder: returned buffer of size " + info.size);
                 }
                 muxAudio(index, info);
             }
@@ -804,56 +832,6 @@ public class ATranscodeTest extends AndroidTestCase {
         encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         encoder.start();
         return encoder;
-    }
-
-
-    private void tryEncodeVideo(String tag) {
-        
-        if (mPendingVideoEncoderInputBufferIndices.size() == 0 ||
-                mPendingVideoDecoderOutputBufferIndices.size() == 0)
-            return;
-
-
-
-        int decoderIndex = mPendingVideoDecoderOutputBufferIndices.poll();
-        MediaCodec.BufferInfo info = mPendingVideoDecoderOutputBufferInfos.poll();
-
-        if(info==null ||info.size<0){
-            Log.i(TAG, "video trydecoder:000 sizeDecoderOutputBufferInfo size");
-            return;
-        }
-        int encoderIndex = mPendingVideoEncoderInputBufferIndices.poll();
-        Log.i(TAG, "video trydecoder: decoderIndex:"+decoderIndex+"\tencoderIndex:"+encoderIndex+"\tinfo:"+info.flags+"\tpts:"+info.presentationTimeUs+"\t"+tag+"\t"+info.size);
-
-        ByteBuffer encoderInputBuffer = mVideoEncoder.getInputBuffer(encoderIndex);
-        int size = info.size;
-        long presentationTime = info.presentationTimeUs;
-
-        if (size > 0) {
-            ByteBuffer decoderOutputBuffer = mVideoDecoder.getOutputBuffer(decoderIndex).duplicate();
-            decoderOutputBuffer.position(info.offset);
-            decoderOutputBuffer.limit(info.offset + size);
-            encoderInputBuffer.position(0);
-            encoderInputBuffer.put(decoderOutputBuffer);
-
-            Bundle b = new Bundle();
-            b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
-            mVideoEncoder.setParameters(b);
-
-            mVideoEncoder.queueInputBuffer( encoderIndex,0,size,presentationTime,info.flags);
-            Log.i(TAG, "video trydecoder: push buffer for time " + presentationTime +"\tsize:"+size+"\tflag:" +info.flags);
-        }
-
-
-        if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-            if (VERBOSE) Log.i(TAG, "video trydecoder: EOS");
-            mVideoDecoderDone = true;
-//            mVideoEncoder.signalEndOfInputStream();
-            mVideoEncoder.queueInputBuffer( encoderIndex,0,0,presentationTime, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-        }
-
-        mVideoDecoder.releaseOutputBuffer(decoderIndex, false);
-        logState();
     }
 
     // No need to have synchronization around this, since both audio encoder and
@@ -870,12 +848,12 @@ public class ATranscodeTest extends AndroidTestCase {
         int size = info.size;
         long presentationTime = info.presentationTimeUs;
         if (VERBOSE) {
-            Log.i(TAG, "audio decoder: processing pending buffer: "
+            Log.d(TAG, "audio decoder: processing pending buffer: "
                     + decoderIndex);
         }
         if (VERBOSE) {
-            Log.i(TAG, "audio decoder: pending buffer of size " + size);
-            Log.i(TAG, "audio decoder: pending buffer for time " + presentationTime);
+            Log.d(TAG, "audio decoder: pending buffer of size " + size);
+            Log.d(TAG, "audio decoder: pending buffer for time " + presentationTime);
         }
         if (size >= 0) {
             ByteBuffer decoderOutputBuffer = mAudioDecoder.getOutputBuffer(decoderIndex).duplicate();
@@ -894,7 +872,7 @@ public class ATranscodeTest extends AndroidTestCase {
         mAudioDecoder.releaseOutputBuffer(decoderIndex, false);
         if ((info.flags
                 & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-            if (VERBOSE) Log.i(TAG, "audio decoder: EOS");
+            if (VERBOSE) Log.d(TAG, "audio decoder: EOS");
             mAudioDecoderDone = true;
         }
         logState();
@@ -905,14 +883,14 @@ public class ATranscodeTest extends AndroidTestCase {
                 && (!mCopyAudio || mEncoderOutputAudioFormat != null)
                 && (!mCopyVideo || mEncoderOutputVideoFormat != null)) {
             if (mCopyVideo) {
-                Log.i(TAG, "muxer: adding video track.");
+                Log.d(TAG, "muxer: adding video track.");
                 mOutputVideoTrack = mMuxer.addTrack(mEncoderOutputVideoFormat);
             }
             if (mCopyAudio) {
-                Log.i(TAG, "muxer: adding audio track.");
+                Log.d(TAG, "muxer: adding audio track.");
                 mOutputAudioTrack = mMuxer.addTrack(mEncoderOutputAudioFormat);
             }
-            Log.i(TAG, "muxer: starting");
+            Log.d(TAG, "muxer: starting");
             mMuxer.start();
             mMuxing = true;
 
@@ -936,13 +914,14 @@ public class ATranscodeTest extends AndroidTestCase {
         }
         ByteBuffer encoderOutputBuffer = mVideoEncoder.getOutputBuffer(index);
         if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-            if (VERBOSE) Log.i(TAG, "video mux: codec config buffer");
+            if (VERBOSE) Log.d(TAG, "video encoder: codec config buffer");
             // Simply ignore codec config buffers.
             mVideoEncoder.releaseOutputBuffer(index, false);
             return;
         }
         if (VERBOSE) {
-            Log.i(TAG, "video mux: returned buffer for time " + info.presentationTimeUs+"\tsize:"+info.size);
+            Log.d(TAG, "video encoder: returned buffer for time "
+                    + info.presentationTimeUs);
         }
         if (info.size != 0) {
             mMuxer.writeSampleData(
@@ -951,7 +930,7 @@ public class ATranscodeTest extends AndroidTestCase {
         mVideoEncoder.releaseOutputBuffer(index, false);
         mVideoEncodedFrameCount++;
         if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-            if (VERBOSE) Log.i(TAG, "video mux: EOS");
+            if (VERBOSE) Log.d(TAG, "video encoder: EOS");
             synchronized (this) {
                 mVideoEncoderDone = true;
                 notifyAll();
@@ -967,13 +946,13 @@ public class ATranscodeTest extends AndroidTestCase {
         }
         ByteBuffer encoderOutputBuffer = mAudioEncoder.getOutputBuffer(index);
         if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-            if (VERBOSE) Log.i(TAG, "audio encoder: codec config buffer");
+            if (VERBOSE) Log.d(TAG, "audio encoder: codec config buffer");
             // Simply ignore codec config buffers.
             mAudioEncoder.releaseOutputBuffer(index, false);
             return;
         }
         if (VERBOSE) {
-            Log.i(TAG, "audio encoder: returned buffer for time " + info.presentationTimeUs);
+            Log.d(TAG, "audio encoder: returned buffer for time " + info.presentationTimeUs);
         }
         if (info.size != 0) {
             mMuxer.writeSampleData(
@@ -982,7 +961,7 @@ public class ATranscodeTest extends AndroidTestCase {
         mAudioEncoder.releaseOutputBuffer(index, false);
         mAudioEncodedFrameCount++;
         if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-            if (VERBOSE) Log.i(TAG, "audio encoder: EOS");
+            if (VERBOSE) Log.d(TAG, "audio encoder: EOS");
             synchronized (this) {
                 mAudioEncoderDone = true;
                 notifyAll();
@@ -1003,7 +982,7 @@ public class ATranscodeTest extends AndroidTestCase {
     private int getAndSelectVideoTrackIndex(MediaExtractor extractor) {
         for (int index = 0; index < extractor.getTrackCount(); ++index) {
             if (VERBOSE) {
-                Log.i(TAG, "format for track " + index + " is "
+                Log.d(TAG, "format for track " + index + " is "
                         + getMimeTypeFor(extractor.getTrackFormat(index)));
             }
             if (isVideoFormat(extractor.getTrackFormat(index))) {
@@ -1017,7 +996,7 @@ public class ATranscodeTest extends AndroidTestCase {
     private int getAndSelectAudioTrackIndex(MediaExtractor extractor) {
         for (int index = 0; index < extractor.getTrackCount(); ++index) {
             if (VERBOSE) {
-                Log.i(TAG, "format for track " + index + " is "
+                Log.d(TAG, "format for track " + index + " is "
                         + getMimeTypeFor(extractor.getTrackFormat(index)));
             }
             if (isAudioFormat(extractor.getTrackFormat(index))) {
@@ -1050,10 +1029,6 @@ public class ATranscodeTest extends AndroidTestCase {
     private LinkedList<MediaCodec.BufferInfo> mPendingAudioDecoderOutputBufferInfos;
     private LinkedList<Integer> mPendingAudioEncoderInputBufferIndices;
 
-    private LinkedList<Integer> mPendingVideoDecoderOutputBufferIndices;
-    private LinkedList<MediaCodec.BufferInfo> mPendingVideoDecoderOutputBufferInfos;
-    private LinkedList<Integer> mPendingVideoEncoderInputBufferIndices;
-
     private LinkedList<Integer> mPendingVideoEncoderOutputBufferIndices;
     private LinkedList<MediaCodec.BufferInfo> mPendingVideoEncoderOutputBufferInfos;
     private LinkedList<Integer> mPendingAudioEncoderOutputBufferIndices;
@@ -1071,7 +1046,7 @@ public class ATranscodeTest extends AndroidTestCase {
 
     private void logState() {
         if (VERBOSE) {
-            Log.i(TAG, String.format(
+            Log.d(TAG, String.format(
                     "loop: "
 
                     + "V(%b){"
@@ -1109,7 +1084,7 @@ public class ATranscodeTest extends AndroidTestCase {
                 }
             }
         }
-    Log.i(TAG,"awaitEncode");
+
         // Basic sanity checks.
         if (mCopyVideo) {
             assertEquals("encoded and decoded video frame counts should match",

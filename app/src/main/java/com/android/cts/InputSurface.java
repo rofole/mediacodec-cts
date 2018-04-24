@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.cts.main;
+package com.android.cts;
 
 import android.opengl.EGL14;
 import android.opengl.EGLExt;

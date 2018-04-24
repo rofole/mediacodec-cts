@@ -23,7 +23,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.test.AndroidTestCase;
 
-import com.android.cts.main.R;
+import com.android.cts.R;
 
 import java.io.File;
 import java.io.FileOutputStream;

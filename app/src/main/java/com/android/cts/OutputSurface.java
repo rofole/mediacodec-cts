@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.cts.main;
+package com.android.cts;
 
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
@@ -265,7 +265,7 @@ class OutputSurface implements SurfaceTexture.OnFrameAvailableListener {
      */
     public void drawImage() {
         mTextureRender.drawFrame(mSurfaceTexture);
-        checkEglError("drawImage");
+//        checkEglError("drawImage");
     }
 
     @Override

@@ -22,7 +22,7 @@ import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.android.cts.main.R;
+import com.android.cts.R;
 
 public class MediaPlayerSurfaceStubActivity extends Activity {
 

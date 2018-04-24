@@ -1,4 +1,4 @@
-package com.android.cts.main;
+package com.android.cts;
 
 import android.os.Environment;
 import android.util.Log;

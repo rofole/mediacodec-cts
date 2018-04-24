@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.cts.main;
+package com.android.cts;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

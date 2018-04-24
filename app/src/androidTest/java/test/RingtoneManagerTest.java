@@ -26,7 +26,7 @@ import android.net.Uri;
 import android.provider.Settings;
 import android.test.ActivityInstrumentationTestCase2;
 
-import com.android.cts.main.R;
+import com.android.cts.R;
 
 public class RingtoneManagerTest
         extends ActivityInstrumentationTestCase2<RingtonePickerActivity> {

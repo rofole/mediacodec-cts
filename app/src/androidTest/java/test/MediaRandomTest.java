@@ -25,7 +25,7 @@ import android.content.res.AssetFileDescriptor;
 import android.content.res.Resources;
 import android.util.Log;
 
-import com.android.cts.main.R;
+import com.android.cts.R;
 
 import java.util.Random;
 

@@ -16,7 +16,7 @@
 
 package test;
 
-import com.android.cts.main.R;
+import com.android.cts.R;
 
 public class SoundPoolAacTest extends SoundPoolTest {
 

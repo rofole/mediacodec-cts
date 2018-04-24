@@ -26,7 +26,7 @@ import android.os.Bundle;
 import android.support.test.runner.AndroidJUnit4;
 import android.util.Log;
 
-import com.android.cts.main.*;
+import com.android.cts.Utils;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
