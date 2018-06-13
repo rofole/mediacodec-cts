@@ -87,10 +87,12 @@ public class EncodeDecodeTest extends AndroidTestCase {
         setParameters(176, 144, 1000000);
         encodeDecodeVideoFromBuffer(false);
     }
+
     public void testEncodeDecodeVideoFromBufferToBufferQVGA() throws Exception {
         setParameters(320, 240, 2000000);
         encodeDecodeVideoFromBuffer(false);
     }
+
     public void testEncodeDecodeVideoFromBufferToBuffer720p() throws Exception {
         setParameters(1280, 720, 6000000);
         encodeDecodeVideoFromBuffer(false);
@@ -112,16 +114,20 @@ public class EncodeDecodeTest extends AndroidTestCase {
         setParameters(176, 144, 1000000);
         BufferToSurfaceWrapper.runTest(this);
     }
+
     public void testEncodeDecodeVideoFromBufferToSurfaceQVGA() throws Throwable {
         setParameters(320, 240, 2000000);
         BufferToSurfaceWrapper.runTest(this);
     }
+
     public void testEncodeDecodeVideoFromBufferToSurface720p() throws Throwable {
         setParameters(1280, 720, 6000000);
         BufferToSurfaceWrapper.runTest(this);
     }
 
-    /** Wraps testEncodeDecodeVideoFromBuffer(true) */
+    /**
+     * Wraps testEncodeDecodeVideoFromBuffer(true)
+     */
     private static class BufferToSurfaceWrapper implements Runnable {
         private Throwable mThrowable;
         private EncodeDecodeTest mTest;
@@ -161,16 +167,20 @@ public class EncodeDecodeTest extends AndroidTestCase {
         setParameters(176, 144, 1000000);
         SurfaceToSurfaceWrapper.runTest(this);
     }
+
     public void testEncodeDecodeVideoFromSurfaceToSurfaceQVGA() throws Throwable {
         setParameters(320, 240, 2000000);
         SurfaceToSurfaceWrapper.runTest(this);
     }
+
     public void testEncodeDecodeVideoFromSurfaceToSurface720p() throws Throwable {
         setParameters(1280, 720, 6000000);
         SurfaceToSurfaceWrapper.runTest(this);
     }
 
-    /** Wraps testEncodeDecodeVideoFromSurfaceToSurface() */
+    /**
+     * Wraps testEncodeDecodeVideoFromSurfaceToSurface()
+     */
     private static class SurfaceToSurfaceWrapper implements Runnable {
         private Throwable mThrowable;
         private EncodeDecodeTest mTest;
@@ -434,7 +444,7 @@ public class EncodeDecodeTest extends AndroidTestCase {
      * Does the actual work for encoding frames from buffers of byte[].
      */
     private void doEncodeDecodeVideoFromBuffer(MediaCodec encoder, int encoderColorFormat,
-            MediaCodec decoder, boolean toSurface) {
+                                               MediaCodec decoder, boolean toSurfacexx) {
         final int TIMEOUT_USEC = 10000;
         ByteBuffer[] encoderInputBuffers = encoder.getInputBuffers();
         ByteBuffer[] encoderOutputBuffers = encoder.getOutputBuffers();
@@ -446,7 +456,7 @@ public class EncodeDecodeTest extends AndroidTestCase {
         int checkIndex = 0;
         int badFrames = 0;
         boolean decoderConfigured = false;
-        OutputSurface outputSurface = null;
+        OutputSurface outputSurfacexx = null;
 
         // The size of a frame of video data, in the formats we handle, is stride*sliceHeight
         // for Y, and (stride/2)*(sliceHeight/2) for each of the Cb and Cr channels.  Application
@@ -703,8 +713,8 @@ public class EncodeDecodeTest extends AndroidTestCase {
      * Does the actual work for encoding and decoding from Surface to Surface.
      */
     private void doEncodeDecodeVideoFromSurfaceToSurface(MediaCodec encoder,
-            InputSurface inputSurface, int encoderColorFormat, MediaCodec decoder,
-            OutputSurface outputSurface) {
+                                                         InputSurface inputSurface, int encoderColorFormat, MediaCodec decoder,
+                                                         OutputSurface outputSurface) {
         final int TIMEOUT_USEC = 10000;
         ByteBuffer[] encoderOutputBuffers = encoder.getOutputBuffers();
         ByteBuffer[] decoderInputBuffers = decoder.getInputBuffers();
@@ -922,8 +932,8 @@ public class EncodeDecodeTest extends AndroidTestCase {
             startY = mHeight / 2;
         }
 
-        for (int y = startY + (mHeight/2) - 1; y >= startY; --y) {
-            for (int x = startX + (mWidth/4) - 1; x >= startX; --x) {
+        for (int y = startY + (mHeight / 2) - 1; y >= startY; --y) {
+            for (int x = startX + (mWidth / 4) - 1; x >= startX; --x) {
                 if (semiPlanar) {
                     // full-size Y, followed by UV pairs at half resolution
                     // e.g. Nexus 4 OMX.qcom.video.encoder.avc COLOR_FormatYUV420SemiPlanar
@@ -931,8 +941,8 @@ public class EncodeDecodeTest extends AndroidTestCase {
                     //        OMX_TI_COLOR_FormatYUV420PackedSemiPlanar
                     frameData[y * mWidth + x] = (byte) TEST_Y;
                     if ((x & 0x01) == 0 && (y & 0x01) == 0) {
-                        frameData[mWidth*mHeight + y * HALF_WIDTH + x] = (byte) TEST_U;
-                        frameData[mWidth*mHeight + y * HALF_WIDTH + x + 1] = (byte) TEST_V;
+                        frameData[mWidth * mHeight + y * HALF_WIDTH + x] = (byte) TEST_U;
+                        frameData[mWidth * mHeight + y * HALF_WIDTH + x + 1] = (byte) TEST_V;
                     }
                 } else {
                     // full-size Y, followed by quarter-size U and quarter-size V
@@ -940,9 +950,9 @@ public class EncodeDecodeTest extends AndroidTestCase {
                     // e.g. Nexus 7 OMX.Nvidia.h264.encoder COLOR_FormatYUV420Planar
                     frameData[y * mWidth + x] = (byte) TEST_Y;
                     if ((x & 0x01) == 0 && (y & 0x01) == 0) {
-                        frameData[mWidth*mHeight + (y/2) * HALF_WIDTH + (x/2)] = (byte) TEST_U;
-                        frameData[mWidth*mHeight + HALF_WIDTH * (mHeight / 2) +
-                                  (y/2) * HALF_WIDTH + (x/2)] = (byte) TEST_V;
+                        frameData[mWidth * mHeight + (y / 2) * HALF_WIDTH + (x / 2)] = (byte) TEST_U;
+                        frameData[mWidth * mHeight + HALF_WIDTH * (mHeight / 2) +
+                                (y / 2) * HALF_WIDTH + (x / 2)] = (byte) TEST_V;
                     }
                 }
             }
@@ -1002,14 +1012,14 @@ public class EncodeDecodeTest extends AndroidTestCase {
             if (semiPlanar) {
                 // Galaxy Nexus uses OMX_TI_COLOR_FormatYUV420PackedSemiPlanar
                 testY = frameData.get(y * width + x) & 0xff;
-                testU = frameData.get(width*height + 2*(y/2) * halfWidth + 2*(x/2)) & 0xff;
-                testV = frameData.get(width*height + 2*(y/2) * halfWidth + 2*(x/2) + 1) & 0xff;
+                testU = frameData.get(width * height + 2 * (y / 2) * halfWidth + 2 * (x / 2)) & 0xff;
+                testV = frameData.get(width * height + 2 * (y / 2) * halfWidth + 2 * (x / 2) + 1) & 0xff;
             } else {
                 // Nexus 10, Nexus 7 use COLOR_FormatYUV420Planar
                 testY = frameData.get(y * width + x) & 0xff;
-                testU = frameData.get(width*height + (y/2) * halfWidth + (x/2)) & 0xff;
-                testV = frameData.get(width*height + halfWidth * (height / 2) +
-                        (y/2) * halfWidth + (x/2)) & 0xff;
+                testU = frameData.get(width * height + (y / 2) * halfWidth + (x / 2)) & 0xff;
+                testV = frameData.get(width * height + halfWidth * (height / 2) +
+                        (y / 2) * halfWidth + (x / 2)) & 0xff;
             }
 
             int expY, expU, expV;
